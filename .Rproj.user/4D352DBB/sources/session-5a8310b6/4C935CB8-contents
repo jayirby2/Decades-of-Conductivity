@@ -1,0 +1,495 @@
+---
+title: "Wayback Machine Intern Report"
+author: "Jay Irby"
+project:
+  type: website
+
+website:
+  page-navigation: true
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    number-sections: true
+
+---
+
+```{r, include=FALSE}
+# Importing necessary packages and files
+library(tidyverse)
+library(caret)
+library(leaflet)
+source("data_cleaning.R")
+source("modeling.R")
+```
+
+```{r, echo=FALSE}
+# Initialize years vector for iterating
+years <- c(1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020)
+
+# Initialize bins for tibble
+years_intervals <- c("1980 - 1984", "1985 - 1989", "1990 - 1994", "1995 - 1999",
+                     "2000 - 2004", "2005 - 2009", "2010 - 2014", "2015 - 2019",
+                     "2020 - 2024")
+
+# For appending
+conds <- c()
+pHs <- c()
+is_predicted <- c()
+se <- c()
+
+count <- 1
+for (i in years) {
+  
+  # If 1985 bin, interpolate
+  if (i == 1985) {
+    sd_1985 <- umr_data %>%
+      filter(Year == i) %>%
+      pull(`Specific Conductivity`) %>%
+      sd()
+    
+    n <- umr_data %>%
+      filter(Year == i) %>%
+      pull(`Specific Conductivity`) %>%
+      length()
+    
+    se_1985 <- sd_1985 / sqrt(n)
+    
+    sc_1985 <- umr_data %>%
+      filter(Year == i) %>%
+      pull(`Specific Conductivity`) %>%
+      mean()
+    
+    pH_1985 <- umr_data %>%
+      filter(Year == i) %>%
+      pull(pH) %>%
+      mean()
+    
+    conds[count] <- (sc_1985 + mean(conductivity_1986_1989$fit)) / 2
+    pHs[count] <- (pH_1985 + mean(pH_1986_1989)) / 2
+    is_predicted[count] <- "Yes"
+    # Root mean squared SE from LOESS fitted
+    se_vals <- c(se_1985, conductivity_1986_1989$se.fit)
+    se[count] <- sqrt(mean((se_vals)^2)) / sqrt(5)
+  }
+  
+  else if (i == 1990) {
+    # If 1990 bin, interpolate
+    conds[count] <- mean(conductivity_1990_1994$fit)
+    pHs[count] <- mean(pH_1990_1994)
+    is_predicted[count] <- "Yes"
+    # Root mean squared of SE from LOESS fits 
+    se[count] <- sqrt(mean(conductivity_1990_1994$se.fit^2)) / sqrt(length(conductivity_1990_1994$se.fit))
+  }
+  
+  else {
+    # Else, utilize existing data
+    mean_bin_sc <- umr_data %>%
+      filter(Year >= i & Year <= i+4) %>%
+      pull(`Specific Conductivity`) %>%
+      mean()
+    
+    mean_bin_pH <- umr_data %>%
+      filter(Year >= i & Year <= i+4) %>%
+      pull(pH) %>%
+      mean()
+    
+    sd_bin <- umr_data %>%
+      filter(Year >= i & Year <= i+4) %>%
+      pull(`Specific Conductivity`) %>%
+      sd()
+    
+    n <- umr_data %>%
+      filter(Year >= i & Year <= i+4) %>%
+      pull(`Specific Conductivity`) %>%
+      length()
+    
+    # SE = sd / sqrt(n)
+    se_bin <- sd_bin / sqrt(n)
+    conds[count] <- mean_bin_sc
+    pHs[count] <- mean_bin_pH
+    is_predicted[count] <- "No"
+    se[count] <- se_bin
+  }
+  count <- count + 1
+}
+
+intervals_tibble <- tibble(Year = years_intervals, Conductivity = conds,
+                           pH = pHs, Predicted = is_predicted, SE = se)
+```
+
+# Narrative
+
+Specific conductance measures water’s ability to conduct electricity,
+which reflects the concentration of dissolved salts and inorganic ions. 
+While terms like "conductivity" and 
+"specific conductance" are often used interchangeably, the latter refers to 
+conductivity normalized to a standard temperature of 25ºC and recorded in
+micromhos per centimeter (µmhos/cm).
+Specific conductance is an indirect measure of
+dissolved solids such as chloride, sulfate, and calcium, which can vary by 
+location and time.
+
+Distilled water has a specific conductance of approximately 1-5 µmhos/cm, 
+whereas seawater has a measure of around 40,000 µmhos/cm. Freshwater streams - 
+the focus of this project - 
+typically have a measure of approximately 100-1800 µmhos/cm. 
+
+Increases in specific conductance indicate a rise of dissolved ions in the water. 
+Although difficult to pinpoint, these dissolved ions are often linked to an 
+increase/change in agriculture, urbanization, or other land uses. 
+
+# Purpose 
+
+The purpose of this project is to examine temporal trends of 
+specific conductance levels in the Upper Manatee River. 
+Similar studies have 
+been conducted in surrounding watersheds, such as Horse Creek, a tributary
+of the Peace River in Hardee County, FL.
+Comparing trends between these watersheds may offer insight into broader 
+regional patterns in water quality.
+
+# The Watershed
+
+The Duette Preserve is a Manatee county-owned park that was purchased from 
+phosphate mining companies in 1984 and 1986. The purchase aimed to protect
+the Lake Manatee reservoir and watershed, as well as preserve an important
+ecosystem. 
+Manatee River tributaries and creeks flow through the preserve and provide key 
+assessments of the health of the watershed.
+
+Row crop farms, pasturelands, and other agricultural operations
+surround the Upper Manatee River watershed, and farming practices could
+have changed over time, which could potentially have impacted conductivity 
+levels in the watershed. 
+
+# Methodology
+
+## The Sampling Locations - OpenStreetMap
+
+The crux of this project utilizes data collected from the UM4 - Upper Manatee 
+River sampling site, slightly east of the reservoir.
+East Fork and North Fork are 
+tributaries of the Manatee River that flow through the Duette Preserve,
+so they are important sites for assessing the 
+quality of the watershed.
+Horse Creek is the site of the nearby study, essential for comparing
+similar trends.
+
+All four of these sites are located on the map below. This OpenStreetMap is 
+interactive, so the viewers unfamiliar with the region can zoom in/out to better
+understand the sampling locations. Users can click on the markers to identify
+sites. 
+
+```{r, echo=FALSE}
+# Creating a map with sampling location using leaflet 
+leaflet() %>%
+  addTiles() %>% 
+  setView(lng = -82.1187, lat = 27.5228, zoom = 11) %>%  
+  addMarkers(lng = -82.270667, lat = 27.4675, 
+                popup = "Upper Manatee River - UM4 Station") %>% 
+  addMarkers(lng = -82.1187, lat = 27.5228, popup = "East Fork") %>%
+  addMarkers(lng = -82.13, lat = 27.5745, popup = "North Fork") %>%
+  addMarkers(lng = -81.984444, lat = 27.416389, popup = "Horse Creek")
+```
+
+## Data Exploration & Cleaning
+
+The main time-series analysis utilized data from the Manatee County
+UM4 sampling site.
+East Fork and North Fork sampling locations are simply for performing a
+historical comparative analysis of the Duette Preserve. 
+
+This project utilizes water quality data from 1980 to 2024. 
+Since 1995, Manatee County has recorded and stored their environmental
+data in a database, so I appended the data post-1995 to a .csv. However, 
+1995 is not a large enough time frame, especially since the Horse Creek 
+study contained data well before that. For data before 1995, I had to 
+think of alternative routes. 
+Manatee County has a digital archive - or "Wayback Machine" - which
+contains old documents, including historic water quality assessments.
+There are hundreds of these documents, and some of them contained specific 
+conductance data sampled from UM4. I manually sifted through hundreds of pages,
+adding usable the data to the master .csv. 
+
+I was able to obtain ~335 rows of specific conductance data collected from UM4.
+I collected ~30 rows of data pre-1995. Although sparse and not ideal, it is the
+best data available and still provides value. However, the water quality 
+assessment documents only contained data from 1979-1985. 
+
+I created a "Years" column to group samples by year, since I am showing the 
+yearly trend of specific conductance. 
+Assuming the data was collected correctly, I did not remove any outliers in 
+terms of conductance. Sometimes, there were values that exceeded 1300 µmhos/cm,
+and although much larger than most of the 
+observations, these are still realistic measurements for freshwater.
+
+The North and East Fork data was collected from the archived documents and also
+only contain years from 1979-1985. 
+
+
+## Modeling
+
+Due to the absence of observed values between 1986 and 1994, 
+I employed a modeling approach to estimate the mean specific 
+conductance for those missing years.  
+Given the time-series nature of the data and the presence of 
+noisy observations, I chose a LOESS (Locally Estimated Scatterplot Smoothing) 
+model to interpolate a smooth trend across the entire time range.  
+This model allowed me to estimate annual mean conductance values from 1986 to 
+1994 based on surrounding data while preserving local patterns in the time 
+series.
+
+LOESS is useful here because it utilizes a certain number of nearby points when
+calculating each local fitted value (eg., fitted values for every year). 
+LOESS performs a weighted linear regression using k nearest neighbors, 
+creating the weights based on the distance from the neighbor to the specific 
+point. So, 
+calculating the best predicted value for missing year 1990 would only use points
+from years close to 1990, thus increasing accuracy for interpolation in time 
+series data. 
+
+To fine-tune the model, I used K-fold cross-validation to identify the optimal
+span value, which controls the number, k, of neighboring data points used in each 
+local fit. However, the cross-validation results varied across runs, yielding 
+different span values each time. To address this, I repeated the tuning
+process multiple times to observe convergence patterns, but the selected span 
+remained inconsistent. Lower spans allowed the earlier years (before 1986) to
+overly influence the interpolated region, since their weights are so large. 
+Higher
+spans just captured the overall trend, which I did not want.
+Ultimately, I chose a span of 0.5, as it provided a good balance between the 
+local trend of very small specific conductance levels and the broader trend of large 
+increases in specific conductance levels. It also created a smooth fit that I felt
+represented the whole data well. A span of 0.5 means that 50% of the
+data points
+are used for each weighted regression at each year. 
+
+
+
+```{r, echo=FALSE}
+umr_data <- umr_data %>%
+  mutate(fitted_conductivity = predict(loess_model_sc, newdata = umr_data))
+
+ggplot(umr_data, aes(x = Year, y = `Specific Conductivity`)) +
+  geom_line(data = umr_data, aes(x = Year, y = fitted_conductivity), color='red',
+            linewidth=1) +
+  geom_point(aes(color = factor(Source)))  +
+  scale_y_continuous(breaks = seq(0, 1500, by = 100)) +
+  scale_x_continuous(breaks = seq(1975, 2025, by = 5)) +
+  scale_color_manual(values = c("Archive" = "blue", 
+                                "Current" = "black"), 
+                     labels = c("Digital Archive", 
+                                "Current Database"),
+                     name = "Data Source") +
+  ggtitle("Figure 1: Specific Conductance at Upper Manatee River with LOESS Curve") + 
+  xlab("Year") + 
+  ylab("Specific Conductance (µmhos/cm)") + 
+  theme(panel.background = element_rect(fill = 'lightblue', color = 'black'))
+```
+
+# Results
+
+To illustrate long-term trends, I calculated the mean specific conductance 
+for each year and grouped the results into 5-year bins. Each bin represents 
+the average specific conductance across its time span. 
+For bins that include missing years, I used LOESS-predicted values 
+to estimate those years’ contributions.
+
+For the 1985–1989 bin, I combined the actual 1985 observation with LOESS-based 
+estimates for 1986–1989 to produce the most accurate representation possible in 
+the absence of real data. 
+
+The interpolated bins are directly labeled in the figure below. 
+```{r, echo=FALSE}
+ggplot(intervals_tibble, aes(x = Year, y = Conductivity, fill = is_predicted)) +
+  geom_col(color="black") +
+  scale_fill_manual(values = c("Yes" = "orange", 
+                               "No" = "lightblue"), 
+                    name = "Interpolated*") +
+  scale_y_continuous(breaks = seq(0, 600, by = 100)) +
+  ggtitle("Figure 2: Five-Year Averages of Specific Conductance (1980–2025)") + 
+  xlab("Year") + 
+  ylab("Specific Conductance (µmhos/cm)") + 
+  theme(axis.text.x = element_text(size = 7.5)) +
+  geom_errorbar(aes(ymin = Conductivity - SE, 
+                    ymax = Conductivity + SE),
+                width = 0.3)
+```
+
+For observed 5-year bins, standard error was calculated using the standard 
+deviation of all raw conductivity values within the bin divided by the square 
+root of the sample size, capturing natural variability in the data.
+For interpolated bins, standard error was derived from the LOESS model’s 
+prediction uncertainty, using the root mean square of the individual prediction
+SEs divided by the square root of the number of interpolated years, representing
+model-based estimation error.
+
+```{r, echo=FALSE}
+bin_1980_mean <- intervals_tibble %>%
+  filter(Year == "1980 - 1984") %>%
+  pull(Conductivity) %>%
+  mean()
+
+bin_2010_mean <- intervals_tibble %>%
+  filter(Year == "2010 - 2014") %>%
+  pull(Conductivity) %>%
+  mean()
+
+bin_2020_mean <-intervals_tibble %>%
+  filter(Year == "2020 - 2024") %>%
+  pull(Conductivity) %>%
+  mean()
+
+most_increase <- ((bin_2010_mean - bin_1980_mean) / bin_1980_mean) * 100
+total_increase <- ((bin_2020_mean - bin_1980_mean) / bin_1980_mean) * 100
+```
+The highest 5-year mean conductivity occurred between 2010 and 2014, 
+representing a `r round(bin_2010_mean - bin_1980_mean, digits=3)` µmhos/cm, a
+`r round(most_increase, digits = 3)`%  increase from the 1980–1984 level.
+
+The total change from the first bin to the most recent (2020–2024) is 
+`r round(bin_2020_mean - bin_1980_mean, digits=3)` µmhos/cm, a 
+`r round(total_increase, digits = 2)`% increase.
+
+# Discussion
+
+The data provides strong evidence that specific conductance levels in the 
+Upper Manatee River watershed have increased steadily over the past 40 years. 
+
+The long-term trends 
+observed in our study align closely with those reported in the
+2007 Peace River Cumulative 
+Impact Study, as shown below in Figure 3. This alignment reinforces the 
+regional trajectory of rising conductivity levels.
+
+**Figure 3: Specific Conductance at Horse Creek, Hardee County**
+
+![Peace River Cumulative 
+Impact Study – Horse Creek (Jan 2007)](PR.png)
+
+
+## Is This Trend a Concern?
+
+The Florida State Standard specifies that specific conductivity must not
+exceed 1,275 µmhos/cm or increase more than 50% above background levels, 
+whichever is greater. While our findings show that annual conductivity values
+remain well below the 1,275 µmhos/cm threshold, long-term trends reveal 
+increases of well over 50% compared to historic baselines. 
+
+This raises an 
+important question: do conductance values that remain within the absolute 
+limit, yet have more than doubled over time, still represent a potential 
+water quality concern?
+
+There is no definitive answer to this question. Conductance levels have risen, 
+but not to a degree currently known to harm plants or animals in the watershed. 
+Additionally, the State's definition for "background levels" is ambiguous, 
+so utilizing historic baselines may not produce an 
+accurate threshold for 
+categorizing harmful conductance levels.
+
+All we know is that the observed trends
+are clear and consistent across comparable watersheds. 
+
+# Quality Assurance
+
+## Data Integrity 
+
+All raw data were checked for completeness, consistency, and validity prior to 
+analysis. Outlier values (e.g., pH > 9) were 
+flagged and reviewed based on known environmental thresholds and patterns in 
+surrounding years. Missing values were explicitly handled using LOESS 
+interpolation only when surrounding data supported stable local trends.
+
+## Model Validation
+
+The LOESS model was selected for its non-parametric flexibility and suitability
+for environmental time-series data. Model parameters (e.g., span) were selected 
+using a combination of K-fold cross-validation and visual inspection to balance 
+model fit and smoothness.
+Model fits were reviewed for smoothness and consistency 
+with observed data on both sides of the interpolated gap (1986–1994).
+
+## Reproducibility
+
+All analyses were conducted using R and fully documented in Quarto notebooks. 
+All code was written using the Tidyverse framework, following consistent data
+manipulation and visualization practices for readability and reproducibility.
+The scripts are version-controlled and can be re-run using the same data and 
+settings to reproduce all tables, figures, and interpolations. 
+
+## Cross-Validation with External Studies
+Results were compared against similar studies from 
+the Peace River Cumulative Impact Study (2007), particularly those from 
+Horse Creek and Joshua Creek, to verify consistency of long-term trends 
+across watersheds.
+
+# Appendix
+
+## North Fork and East Fork Comparative Analysis
+
+```{r, echo=FALSE}
+
+forks <- c("North Fork", "East Fork")
+nf_conductivity <- sc_data %>%
+  pull(`North Fork Conductivity`) %>%
+  mean()
+
+ef_conductivity <- sc_data %>%
+  pull(`East Fork Conductivity`) %>%
+  mean()
+
+sd_nf <- sc_data %>%
+  pull(`North Fork Conductivity`) %>%
+  sd()
+
+sd_ef <- sc_data %>%
+  pull(`East Fork Conductivity`) %>%
+  sd()
+
+n_nf <- sc_data %>%
+  pull(`North Fork Conductivity`) %>%
+  length()
+
+n_ef <- sc_data %>%
+  pull(`East Fork Conductivity`) %>%
+  length()
+
+se_nf <- sd_nf / sqrt(n_nf)
+se_ef <- sd_ef / sqrt(n_ef)
+
+forks_conductivities <- c(nf_conductivity, ef_conductivity)
+se_forks <- c(se_nf, se_ef)
+
+forks_tibble <- tibble(Forks = forks, 
+                       `Specific Conductance` = forks_conductivities,
+                       SE = se_forks)
+
+ggplot(forks_tibble, aes(x = Forks, y = `Specific Conductance`, fill=Forks)) +
+  geom_bar(stat="identity", color="black") + 
+  scale_fill_manual(values = c("East Fork" = "lightblue", "North Fork" = "orange")) + 
+  ggtitle("Figure 4: North Fork vs. East Fork Conductivity Levels 1980 - 1985") + 
+  geom_errorbar(aes(ymin = `Specific Conductance` - SE, 
+                    ymax = `Specific Conductance` + SE),
+                width = 0.3)
+```
+
+This plot portrays the historic specific conductance levels in the Duette Preserve
+region of the Upper Manatee River.
+
+# References
+
+1. [Peace River Cumulative Impact Study](https://www.dropbox.com/scl/fi/1feg9shxzkbqanbco0sy8/peace_river_cis.pdf?rlkey=entdp96lu62fsv8l6y7itvyfp&st=9fkpj3pt&dl=0)
+
+2. [Typical Water Conductivity Range](https://atlas-scientific.com/blog/water-conductivity-range/)
+
+3. [Wayback Machine Project SOP](Wayback_Machine_SOP.pdf)
+
+# Acknowledgements 
+I would like to thank my advisor, Greg Blanchard, and Manatee County
+for the opportunity to conduct special research and strengthen 
+my data science toolkit. Thank you to anyone who has viewed this report.
+If you have any questions or feedback, please reach out to me at my
+[LinkedIn](https://www.linkedin.com/in/jay-irby/).

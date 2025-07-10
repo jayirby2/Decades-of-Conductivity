@@ -1,0 +1,28 @@
+"0","# Importing necessary packages and files"
+"0","library(tidyverse)"
+"0","library(caret)"
+"0","library(leaflet)"
+"0","source(""data_cleaning.R"")"
+"2","[1mRows: [22m[34m335[39m [1mColumns: [22m[34m5[39m
+"
+"2","[36m──[39m [1mColumn specification[22m [36m───────────────────────────────────────────────────────────────────────[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m (3): Date, Units, Site
+[32mdbl[39m (2): Specific Conductivity, pH
+"
+"2","
+[36mℹ[39m Use `spec()` to retrieve the full column specification for this data.
+[36mℹ[39m Specify the column types or set `show_col_types = FALSE` to quiet this message.
+"
+"2","[1mRows: [22m[34m21[39m [1mColumns: [22m[34m5[39m
+"
+"2","[36m──[39m [1mColumn specification[22m [36m───────────────────────────────────────────────────────────────────────[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m (1): Date
+[32mdbl[39m (4): North Fork Conductivity, East Fork Conductivity, North Fork pH, East Fork pH
+"
+"2","
+[36mℹ[39m Use `spec()` to retrieve the full column specification for this data.
+[36mℹ[39m Specify the column types or set `show_col_types = FALSE` to quiet this message.
+"
+"0","source(""modeling.R"")"

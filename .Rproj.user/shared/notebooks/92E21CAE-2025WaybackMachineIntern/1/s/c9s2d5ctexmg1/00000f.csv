@@ -1,0 +1,8 @@
+"0","# Creating a map with sampling location using leaflet "
+"0","leaflet() %>%"
+"0","  addTiles() %>% "
+"0","  setView(lng = -82.2133, lat = 27.5286, zoom = 12) %>%  "
+"0","  addMarkers(lng = -82.270667, lat = 27.4675, "
+"0","                popup = ""Upper Manatee River - UM4 Station"") %>% "
+"0","  addMarkers(lng = -82.1187, lat = 27.5228, popup = ""East Fork"") %>%"
+"0","  addMarkers(lng = -82.13, lat = 27.5745, popup = ""North Fork"")"

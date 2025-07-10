@@ -1,0 +1,271 @@
+---
+title: "Project Analysis"
+output: html_document
+date: "2025-05-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing useful libraries
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(caret)
+```
+
+## Cleaning Data
+```{r}
+data <- read.csv("Data.csv")
+# Converting dates to date type
+data$Date <- as.Date(data$Date, format="%m/%d/%Y")
+# Creating a year column for modeling purposes
+data$Year <- as.numeric(format(data$Date, "%Y"))
+
+# Removing outliers
+data <- data[-c(which(data$Specific.Conductivity > 1000 | data$pH > 8)), ] %>%
+  na.omit()
+
+# Removing 1978 as a Year value for LOESS modeling purposes and extrapolation issues
+
+data <- data[-c(which(data$Year < 1979)), ]
+```
+
+## Descriptive Statistics After Removing Outliers
+```{r}
+summary(data)
+```
+
+## Scatterplot Conductivity
+
+```{r}
+
+ggplot(data, aes(x = Year, y = Specific.Conductivity)) +
+  geom_point()
+
+```
+
+## Scatterplot pH
+
+
+```{r}
+
+ggplot(data, aes(x = Year, y = pH)) +
+  geom_point()
+
+```
+
+### Modeling 
+
+Performing a LOESS Regression to predict missing gap for 1990.
+
+## Conductivity
+
+# K-Fold Cross Validation
+
+Determining the best model for conductivity
+```{r}
+
+# Identify most optimal span value, testing between 0.3 and 0.7 
+control <- trainControl(method = "cv", number = 5)
+grid <- expand.grid(span = seq(0.3, 0.7, len = 5), degree = 1)
+
+# Perform cross-validation
+validation_model_SC <- train(Specific.Conductivity ~ Year, data = data, method = "gamLoess", tuneGrid = grid, trControl = control)
+
+# Print results of k-fold cross-validation
+print(validation_model_SC)
+```
+Model with span = 0.6 has lowest RSME value and thus is the most optimal model.
+
+## Predicting missing time series measurements
+
+```{r}
+loess_model_SC <- loess(Specific.Conductivity ~ Year, data = data, span = 0.6, family = "symmetric")
+conductivity_1990 <- predict(loess_model_SC, newdata = data.frame(Year = 1990))
+
+conductivity_1986_1989 = predict(loess_model_SC, newdata = data.frame(Year = 1986:1989))
+
+conductivity_1990_1994 = predict(loess_model_SC, newdata = data.frame(Year = 1990:1994))
+
+conductivity_1990_1994
+```
+
+## pH
+
+# K-Fold Cross Validation
+
+Determining the best model for pH
+```{r}
+
+# Identify most optimal span value, testing between 0.3 and 0.7 
+control <- trainControl(method = "cv", number = 5)
+grid <- expand.grid(span = seq(0.3, 0.7, len = 5), degree = 1)
+
+# Perform cross-validation
+validation_model_pH <- train(pH ~ Year, data = data, method = "gamLoess", tuneGrid = grid, trControl = control)
+
+# Print results of k-fold cross-validation
+print(validation_model_pH)
+```
+Model with span = 0.3 has lowest RSME value and thus is the most optimal model.
+
+## Predicting missing time series measurements
+
+```{r}
+loess_model_pH <- loess(pH ~ Year, data = data, span = 0.3, family = "symmetric")
+pH_1990 <- predict(loess_model_pH, newdata = data.frame(Year = 1990))
+
+pH_1986_1989 = predict(loess_model_pH, newdata = data.frame(Year = 1986:1989))
+
+pH_1990_1994 = predict(loess_model_pH, newdata = data.frame(Year = 1990:1994))
+```
+
+
+## Conductivity and pH Over Time
+
+Creating a tibble for measurements in 5 year intervals
+
+```{r}
+years <- c(1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020)
+conds <- c()
+pHs <- c()
+count <- 1
+for (i in years) {
+  if (i == 1990) {
+    conds[count] <- conductivity_1990
+    pHs[count] <- pH_1990
+  }
+  
+  else {
+    conds[count] <- mean(data$Specific.Conductivity[c(which(data$Year == i))])
+    pHs[count] <- mean(data$pH[c(which(data$Year == i))])
+  }
+  count <- count + 1
+}
+
+intervals_tibble <- tibble(Year = years, Conductivity = conds, pH = pHs)
+intervals_tibble
+```
+
+# Rolling Intervals
+```{r}
+years_rolling <- c("1980 - 1984", "1985 - 1989", "1990 - 1994", "1995 - 1999", "2000 - 2004", "2005 - 2009", "2010 - 2014", "2015 - 2019", "2020 - 2024")
+conds_rolling <- c()
+pHs_rolling <- c()
+count_1 <- 1
+for (i in years) {
+  if (i == 1985) {
+    conds_rolling[count_1] <- (mean(data$Specific.Conductivity[c(which(data$Year == i))]) + mean(conductivity_1986_1989)) / 2
+    pHs_rolling[count_1] <- (mean(data$pH[c(which(data$Year == i))]) + mean(pH_1986_1989)) / 2
+  }
+  
+  else if (i == 1990) {
+    conds_rolling[count_1] <- mean(conductivity_1990_1994)
+    pHs_rolling[count_1] <- mean(pH_1990_1994)
+  }
+  
+  else {
+    conds_rolling[count_1] <- mean(data$Specific.Conductivity[c(which(i <= data$Year & data$Year <= i + 4))])
+    pHs_rolling[count_1] <- mean(data$pH[c(which(i <= data$Year & data$Year <= i + 4))])
+  }
+  count_1 <- count_1 + 1
+}
+
+intervals_tibble_rolling <- tibble(Year = years_rolling, Conductivity = conds_rolling, pH = pHs_rolling)
+intervals_tibble_rolling
+```
+
+### Visualizations
+
+# LOESS Plots for Conductivity and pH
+
+pH
+```{r}
+data$fitted_pH <- predict(loess_model_pH)
+
+
+ggplot(data, aes(x = Year, y = pH)) +
+  geom_point() +
+  geom_line(data = data, aes(x = Year, y = fitted_pH)) +
+  ggtitle("LOESS Plot of pH") + xlab("Year") + ylab("pH")
+```
+
+Conductivity
+```{r}
+data$fitted_conductivity <- predict(loess_model_SC)
+
+
+ggplot(data, aes(x = Year, y = Specific.Conductivity)) +
+  geom_point() +
+  geom_line(data = data, aes(x = Year, y = fitted_conductivity)) +
+  ggtitle("LOESS Plot of Conductivity") + xlab("Year") + ylab("Conductivity")
+```
+
+# Bar Graphs for Interval Measurements
+
+Conductivity
+```{r}
+ggplot(intervals_tibble, aes(x = Year, y = Conductivity)) +
+  geom_col() +
+  ggtitle("Decades of Conductivity") + xlab("Year") + ylab("Conductivity (micromhos/cm)")
+```
+
+pH
+```{r}
+ggplot(intervals_tibble, aes(x = Year, y = pH)) +
+  geom_col() +
+  ggtitle("Decades of pH") + xlab("Year") + ylab("pH") +
+  coord_cartesian(ylim = c(6, 7.5))
+```
+
+# Bar Graphs for Interval Measurements, 5 Year Averages
+
+Conductivity
+```{r}
+ggplot(intervals_tibble_rolling, aes(x = Year, y = Conductivity)) +
+  geom_col() +
+  ggtitle("Decades of Conductivity Rolling") + xlab("Year") + ylab("Conductivity (micromhos/cm)")
+```
+
+pH
+```{r}
+ggplot(intervals_tibble_rolling, aes(x = Year, y = pH)) +
+  geom_col() +
+  ggtitle("Decades of pH Rolling") + xlab("Year") + ylab("pH") +
+  coord_cartesian(ylim = c(6, 7.5))
+```
+
+### North Fork and South Fork: A Comparative Analysis
+
+```{r}
+df <- read.csv("Site Comparisons.csv")
+
+df$Date <- as.Date(df$Date, format="%m/%d/%Y")
+# Creating a year column for modeling purposes
+df$Year <- as.numeric(format(df$Date, "%Y"))
+df <- na.omit(df)
+summary(df)
+```
+
+Conductivity
+```{r}
+forks <- c("North Fork", "East Fork")
+forks_conductivities <- c(mean(df$North.Fork.Conductivity), mean(df$East.Fork.Conductivity))
+
+forks_pH <- c(mean(df$North.Fork.pH), mean(df$East.Fork.pH))
+
+forks_tibble <- tibble(Forks = forks, Conductivity = forks_conductivities, pH = forks_pH)
+
+ggplot(forks_tibble, aes(x = Forks, y = Conductivity)) +
+  geom_col() +
+  ggtitle("North Fork vs. South Fork Conductivity Levels 1980 - 1985")
+```
+
+pH
+```{r}
+ggplot(forks_tibble, aes(x = Forks, y = pH)) +
+  geom_col() +
+  ggtitle("North Fork vs. South Fork pH 1980 - 1985")
+```
