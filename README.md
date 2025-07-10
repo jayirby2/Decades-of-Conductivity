@@ -36,7 +36,7 @@ non-parametric modeling techniques. Modeling and cleaning are in seperate files,
 
 ## About The Author
 
-Hello, my name is Jay Irby, and I was currently interning with the Manatee County Environmental Protection Division when completing this project.
+My name is Jay Irby, and I was interning with the Manatee County Environmental Protection Division when completing this project.
 I am a data science major at the University of Florida, minoring in Geography and graduating in May 2026. I have a passion for 
 data science and love applying it to areas like environmental applications, sports performance, 
 and really any space where data can help tell a story or solve a problem. If you have any questions or feedback, please reach out to me
