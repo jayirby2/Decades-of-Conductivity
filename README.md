@@ -32,7 +32,7 @@ project's website,
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use the Comparison section to view similarities between the Upper Manatee River and nearby watersheds like Horse Creek.
 
 This project can serve as a template for similar environmental analyses using historical data and 
-non-parametric modeling techniques.
+non-parametric modeling techniques. Modeling and cleaning are in seperate files, and further data manipulation, visualizations, etc. are in the main .Qmd file.
 
 ## About The Author
 
