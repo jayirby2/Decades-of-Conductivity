@@ -1,0 +1,72 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Wayback Machine Intern Report",
+    "section": "",
+    "text": "Specific conductance measures water’s ability to conduct electricity, which reflects the concentration of dissolved salts and inorganic ions. While terms like “conductivity” and “specific conductance” are often used interchangeably, the latter refers to conductivity normalized to a standard temperature of 25ºC and recorded in micromhos per centimeter (µmhos/cm). Specific conductance is an indirect measure of dissolved solids such as chloride, sulfate, and calcium, which can vary by location and time.\nDistilled water has a specific conductance of approximately 1-5 µmhos/cm, whereas seawater has a measure of around 40,000 µmhos/cm. Freshwater streams - the focus of this project - typically have a measure of approximately 100-1800 µmhos/cm.\nIncreases in specific conductance indicate a rise of dissolved ions in the water. Although difficult to pinpoint, these dissolved ions are often linked to an increase/change in agriculture, urbanization, or other land uses."
+  },
+  {
+    "objectID": "index.html#the-sampling-locations---openstreetmap",
+    "href": "index.html#the-sampling-locations---openstreetmap",
+    "title": "Wayback Machine Intern Report",
+    "section": "4.1 The Sampling Locations - OpenStreetMap",
+    "text": "4.1 The Sampling Locations - OpenStreetMap\nThe crux of this project utilizes data collected from the UM4 - Upper Manatee River sampling site, slightly east of the reservoir. East Fork and North Fork are tributaries of the Manatee River that flow through the Duette Preserve, so they are important sites for assessing the quality of the watershed. Horse Creek is the site of the nearby study, essential for comparing similar trends.\nAll four of these sites are located on the map below. This OpenStreetMap is interactive, so the viewers unfamiliar with the region can zoom in/out to better understand the sampling locations. Users can click on the markers to identify sites."
+  },
+  {
+    "objectID": "index.html#data-exploration-cleaning",
+    "href": "index.html#data-exploration-cleaning",
+    "title": "Wayback Machine Intern Report",
+    "section": "4.2 Data Exploration & Cleaning",
+    "text": "4.2 Data Exploration & Cleaning\nThe main time-series analysis utilized data from the Manatee County UM4 sampling site. East Fork and North Fork sampling locations are simply for performing a historical comparative analysis of the Duette Preserve.\nThis project utilizes water quality data from 1980 to 2024. Since 1995, Manatee County has recorded and stored their environmental data in a database, so I appended the data post-1995 to a .csv. However, 1995 is not a large enough time frame, especially since the Horse Creek study contained data well before that. For data before 1995, I had to think of alternative routes. Manatee County has a digital archive - or “Wayback Machine” - which contains old documents, including historic water quality assessments. There are hundreds of these documents, and some of them contained specific conductance data sampled from UM4. I manually sifted through hundreds of pages, adding usable the data to the master .csv.\nI was able to obtain ~335 rows of specific conductance data collected from UM4. I collected ~30 rows of data pre-1995. Although sparse and not ideal, it is the best data available and still provides value. However, the water quality assessment documents only contained data from 1979-1985.\nI created a “Years” column to group samples by year, since I am showing the yearly trend of specific conductance. Assuming the data was collected correctly, I did not remove any outliers in terms of conductance. Sometimes, there were values that exceeded 1300 µmhos/cm, and although much larger than most of the observations, these are still realistic measurements for freshwater.\nThe North and East Fork data was collected from the archived documents and also only contain years from 1979-1985."
+  },
+  {
+    "objectID": "index.html#modeling",
+    "href": "index.html#modeling",
+    "title": "Wayback Machine Intern Report",
+    "section": "4.3 Modeling",
+    "text": "4.3 Modeling\nDue to the absence of observed values between 1986 and 1994, I employed a modeling approach to estimate the mean specific conductance for those missing years.\nGiven the time-series nature of the data and the presence of noisy observations, I chose a LOESS (Locally Estimated Scatterplot Smoothing) model to interpolate a smooth trend across the entire time range.\nThis model allowed me to estimate annual mean conductance values from 1986 to 1994 based on surrounding data while preserving local patterns in the time series.\nLOESS is useful here because it utilizes a certain number of nearby points when calculating each local fitted value (eg., fitted values for every year). LOESS performs a weighted linear regression using k nearest neighbors, creating the weights based on the distance from the neighbor to the specific point. So, calculating the best predicted value for missing year 1990 would only use points from years close to 1990, thus increasing accuracy for interpolation in time series data.\nTo fine-tune the model, I used K-fold cross-validation to identify the optimal span value, which controls the number, k, of neighboring data points used in each local fit. However, the cross-validation results varied across runs, yielding different span values each time. To address this, I repeated the tuning process multiple times to observe convergence patterns, but the selected span remained inconsistent. Lower spans allowed the earlier years (before 1986) to overly influence the interpolated region, since their weights are so large. Higher spans just captured the overall trend, which I did not want. Ultimately, I chose a span of 0.5, as it provided a good balance between the local trend of very small specific conductance levels and the broader trend of large increases in specific conductance levels. It also created a smooth fit that I felt represented the whole data well. A span of 0.5 means that 50% of the data points are used for each weighted regression at each year."
+  },
+  {
+    "objectID": "index.html#is-this-trend-a-concern",
+    "href": "index.html#is-this-trend-a-concern",
+    "title": "Wayback Machine Intern Report",
+    "section": "6.1 Is This Trend a Concern?",
+    "text": "6.1 Is This Trend a Concern?\nThe Florida State Standard specifies that specific conductivity must not exceed 1,275 µmhos/cm or increase more than 50% above background levels, whichever is greater. While our findings show that annual conductivity values remain well below the 1,275 µmhos/cm threshold, long-term trends reveal increases of well over 50% compared to historic baselines.\nThis raises an important question: do conductance values that remain within the absolute limit, yet have more than doubled over time, still represent a potential water quality concern?\nThere is no definitive answer to this question. Conductance levels have risen, but not to a degree currently known to harm plants or animals in the watershed. Additionally, the State’s definition for “background levels” is ambiguous, so utilizing historic baselines may not produce an accurate threshold for categorizing harmful conductance levels.\nAll we know is that the observed trends are clear and consistent across comparable watersheds."
+  },
+  {
+    "objectID": "index.html#data-integrity",
+    "href": "index.html#data-integrity",
+    "title": "Wayback Machine Intern Report",
+    "section": "7.1 Data Integrity",
+    "text": "7.1 Data Integrity\nAll raw data were checked for completeness, consistency, and validity prior to analysis. Outlier values (e.g., pH &gt; 9) were flagged and reviewed based on known environmental thresholds and patterns in surrounding years. Missing values were explicitly handled using LOESS interpolation only when surrounding data supported stable local trends."
+  },
+  {
+    "objectID": "index.html#model-validation",
+    "href": "index.html#model-validation",
+    "title": "Wayback Machine Intern Report",
+    "section": "7.2 Model Validation",
+    "text": "7.2 Model Validation\nThe LOESS model was selected for its non-parametric flexibility and suitability for environmental time-series data. Model parameters (e.g., span) were selected using a combination of K-fold cross-validation and visual inspection to balance model fit and smoothness. Model fits were reviewed for smoothness and consistency with observed data on both sides of the interpolated gap (1986–1994)."
+  },
+  {
+    "objectID": "index.html#reproducibility",
+    "href": "index.html#reproducibility",
+    "title": "Wayback Machine Intern Report",
+    "section": "7.3 Reproducibility",
+    "text": "7.3 Reproducibility\nAll analyses were conducted using R and fully documented in Quarto notebooks. All code was written using the Tidyverse framework, following consistent data manipulation and visualization practices for readability and reproducibility. The scripts are version-controlled and can be re-run using the same data and settings to reproduce all tables, figures, and interpolations."
+  },
+  {
+    "objectID": "index.html#cross-validation-with-external-studies",
+    "href": "index.html#cross-validation-with-external-studies",
+    "title": "Wayback Machine Intern Report",
+    "section": "7.4 Cross-Validation with External Studies",
+    "text": "7.4 Cross-Validation with External Studies\nResults were compared against similar studies from the Peace River Cumulative Impact Study (2007), particularly those from Horse Creek and Joshua Creek, to verify consistency of long-term trends across watersheds."
+  },
+  {
+    "objectID": "index.html#north-fork-and-east-fork-comparative-analysis",
+    "href": "index.html#north-fork-and-east-fork-comparative-analysis",
+    "title": "Wayback Machine Intern Report",
+    "section": "8.1 North Fork and East Fork Comparative Analysis",
+    "text": "8.1 North Fork and East Fork Comparative Analysis\n\n\n\n\n\n\n\n\n\nThis plot portrays the historic specific conductance levels in the Duette Preserve region of the Upper Manatee River."
+  }
+]
