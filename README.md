@@ -23,14 +23,13 @@ files are both located in this repository.
 In the 
 project's website,
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Start by reviewing the Data section to understand the sources and how the data was cleaned.
+  - Start by reviewing the Data section to understand the sources and how the data was cleaned.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Visit the Model section to see how missing values were interpolated using LOESS smoothing.
+  - Visit the Model section to see how missing values were interpolated using LOESS smoothing.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Check out the Visualizations to observe trends over time and compare conductance levels across different 5-year periods.
+  - Check out the Visualizations to observe trends over time and compare conductance levels across different 5-year periods.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use the Comparison section to view similarities between the Upper Manatee River and nearby watersheds like
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Horse Creek.
+  - Use the Comparison section to view similarities between the Upper Manatee River and nearby watersheds like Horse Creek.
 
 This project can serve as a template for similar environmental analyses using historical data and 
 non-parametric modeling techniques. Modeling and cleaning are in seperate files, and further data manipulation, visualizations, etc. are in the main .Qmd file.
