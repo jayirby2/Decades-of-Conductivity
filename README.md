@@ -29,7 +29,8 @@ project's website,
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Check out the Visualizations to observe trends over time and compare conductance levels across different 5-year periods.
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use the Comparison section to view similarities between the Upper Manatee River and nearby watersheds like Horse Creek.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Use the Comparison section to view similarities between the Upper Manatee River and nearby watersheds like
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Horse Creek.
 
 This project can serve as a template for similar environmental analyses using historical data and 
 non-parametric modeling techniques. Modeling and cleaning are in seperate files, and further data manipulation, visualizations, etc. are in the main .Qmd file.
