@@ -2,7 +2,7 @@ Project website: https://jayirby2.github.io/Decades-of-Conductivity/
 
 # Manatee Wayback Machine | Decades of Conductivity
 
-## _Manatee County Natural Resources Deparement, Environmental Protection Division; Intern Jay Irby_
+## _Manatee County Natural Resources Department, Environmental Protection Division; Intern Jay Irby_
 
 ## Project Overview
 
